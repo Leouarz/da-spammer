@@ -1,10 +1,8 @@
 use avail_rust_client::avail_rust_core::rpc::blob::submit_blob;
 use avail_rust_client::prelude::*;
 use clap::Parser;
-use da_commitment::build_da_commitments::build_da_commitments;
-use kate::Seed;
-use sp_core::keccak_256;
-use sp_std::iter::repeat;
+
+use da_spammer::build_blob_and_commitments;
 
 /// Simple CLI for spamming blobs + metadata to an Avail node.
 #[derive(Parser, Debug)]
@@ -57,7 +55,6 @@ fn keypair_for(account: &str) -> Keypair {
 async fn main() -> Result<(), ClientError> {
     let args = Args::parse();
 
-    // Hard bounds (panic on invalid as requested)
     if !(1..=32).contains(&args.size_mb) {
         panic!("--size-mb must be within 1..=32");
     }
@@ -78,61 +75,47 @@ async fn main() -> Result<(), ClientError> {
     println!("Size     : {} MiB ({} bytes)", args.size_mb, len_bytes);
     println!("Count    : {}", args.count);
 
-    // Connect + signer
     let client = Client::new(&args.endpoint).await?;
     let signer = keypair_for(&args.account);
 
-    // Byte to repeat
     let default_ch = args.account.chars().next().unwrap();
     let ch = args.ch.unwrap_or(default_ch);
     let byte = ch as u8;
 
-    // Current nonce
     let account_id = signer.account_id();
     let mut nonce = client.nonce(&account_id).await?;
     println!("AccountId: {account_id}");
     println!("Start nonce: {nonce}");
 
-    // These should match your chain's runtime.
-    const ROWS: usize = 1024;
-    const COLS: usize = 4096;
-
-    // Precompute all blobs + commitments
+    // Precompute blobs & commitments
     println!("---- Precomputing {} blobs & commitments ...", args.count);
     let mut prepared: Vec<(Vec<u8>, H256, Vec<u8>)> = Vec::with_capacity(args.count);
-
     for i in 0..args.count {
-        // small length variance (len - i)
         let this_len = len_bytes - i;
-        let blob: Vec<u8> = repeat(byte).take(this_len).collect();
-        let blob_hash = H256::from(keccak_256(&blob));
-        // build KZG commitments (bytes) using the helper
-        let commitments = build_da_commitments(blob.clone(), ROWS, COLS, Seed::default());
+        let (blob, hash, commitments) = build_blob_and_commitments(byte, this_len);
+        // use our prepared blob (same content) to keep prints identical to before
         println!(
             "  [{}] blob_len={}B  hash={:?}  commitments_len={}",
             i,
             blob.len(),
-            blob_hash,
+            hash,
             commitments.len()
         );
-        prepared.push((blob, blob_hash, commitments));
+        prepared.push((blob, hash, commitments));
     }
     println!("✓ Precompute done");
 
-    // Submit all
     println!("---- Submitting {} blobs ...", prepared.len());
     for (i, (blob, hash, commitments)) in prepared.into_iter().enumerate() {
         let app_id = (i % 5) as u32;
         let options = Options::new().app_id(app_id).nonce(nonce);
 
-        // Build unsigned extrinsic (metadata only)
         let unsigned = client.tx().data_availability().submit_blob_metadata(
             hash,
             blob.len() as u64,
             commitments,
         );
 
-        // Sign and SCALE-encode
         let tx_bytes = unsigned.sign(&signer, options).await.unwrap().0.encode();
 
         println!(
@@ -143,7 +126,6 @@ async fn main() -> Result<(), ClientError> {
             tx_bytes.len()
         );
 
-        // Submit (RPC combines metadata + blob)
         match submit_blob(&client.rpc_client, tx_bytes, blob).await {
             Ok(_) => println!("    ✓ [{}] submitted", i),
             Err(e) => eprintln!("    ✗ [{}] error: {e}", i),

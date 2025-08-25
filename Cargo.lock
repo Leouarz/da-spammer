@@ -1433,6 +1433,7 @@ dependencies = [
  "kate",
  "parity-scale-codec",
  "sp-core",
+ "sp-runtime",
  "sp-std 14.0.0 (git+https://github.com/availproject/polkadot-sdk.git?branch=ghali%2Finfinity-da-rpc)",
  "tokio",
 ]

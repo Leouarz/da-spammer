@@ -16,6 +16,7 @@ avail-rust-client = { git = "https://github.com/availproject/avail-rust", branch
 # Substrate core bits needed for hashing / types
 sp-core = { git = "https://github.com/availproject/polkadot-sdk.git", branch = "ghali/infinity-da-rpc", default-features = false, features = ["std"] }
 sp-std  = { git = "https://github.com/availproject/polkadot-sdk.git", branch = "ghali/infinity-da-rpc", default-features = false, features = ["std"] }
+sp-runtime = { git = "https://github.com/availproject/polkadot-sdk.git", branch = "ghali/infinity-da-rpc", default-features = false, features = ["std"] }
 
 # Kate/KZG + the tiny wrapper you already use to build commitments
 kate = { git = "https://github.com/availproject/avail-core", branch = "ghali/infinity-da-rpc", default-features = false, features = ["std"] }
