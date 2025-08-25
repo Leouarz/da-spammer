@@ -12,8 +12,8 @@ struct Args {
     #[arg(long, value_parser = validate_account)]
     account: String,
 
-    /// Payload size in MiB [1..=64] (default: 64)
-    #[arg(long, default_value_t = 64)]
+    /// Payload size in MiB [1..=64] (default: 32)
+    #[arg(long, default_value_t = 32)]
     size_mb: usize,
 
     /// Number of transactions [1..=100] (default: 50)
