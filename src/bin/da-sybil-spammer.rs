@@ -35,8 +35,8 @@ struct Args {
     #[arg(long, default_value_t = 100)]
     batch_size: usize,
 
-    /// Payload size in MiB [1..=32] per tx
-    #[arg(long, default_value_t = 32)]
+    /// Payload size in MiB [1..=64] per tx
+    #[arg(long, default_value_t = 64)]
     size_mb: usize,
 
     /// Total number of blob submissions (loop count)
@@ -83,8 +83,8 @@ fn dev_keypair(name: &str) -> Keypair {
 #[tokio::main]
 async fn main() -> Result<(), ClientError> {
     let args = Args::parse();
-    if !(1..=32).contains(&args.size_mb) {
-        panic!("--size-mb must be within 1..=32");
+    if !(1..=64).contains(&args.size_mb) {
+        panic!("--size-mb must be within 1..=64");
     }
     if args.accounts == 0 {
         panic!("--accounts must be > 0");

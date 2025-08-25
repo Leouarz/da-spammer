@@ -12,8 +12,8 @@ struct Args {
     #[arg(long, value_parser = validate_account)]
     account: String,
 
-    /// Payload size in MiB [1..=32] (default: 32)
-    #[arg(long, default_value_t = 32)]
+    /// Payload size in MiB [1..=64] (default: 64)
+    #[arg(long, default_value_t = 64)]
     size_mb: usize,
 
     /// Number of transactions [1..=100] (default: 50)
@@ -55,8 +55,8 @@ fn keypair_for(account: &str) -> Keypair {
 async fn main() -> Result<(), ClientError> {
     let args = Args::parse();
 
-    if !(1..=32).contains(&args.size_mb) {
-        panic!("--size-mb must be within 1..=32");
+    if !(1..=64).contains(&args.size_mb) {
+        panic!("--size-mb must be within 1..=64");
     }
     if !(1..=100).contains(&args.count) {
         panic!("--count must be within 1..=100");

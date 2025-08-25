@@ -19,7 +19,7 @@ Shared
 
 **`da-spammer` (single account)**
 - Uses a chosen dev account (`Alice`, `Bob`, `Charlie`, `Dave`, `Eve`, `Ferdie`, `One`, `Two`)
-- Configurable blob size (1-32 MiB), count, and repeated content character
+- Configurable blob size (1-64 MiB), count, and repeated content character
 
 **`da-sybil-spammer` (multi account)**
 - Generates *N* fresh SR25519 accounts (not persisted by default)
@@ -54,7 +54,7 @@ Artifacts:
 
 **Flags**
 - `--account <alice|bob|charlie|dave|eve|ferdie|one|two>` (required)
-- `--size-mb <1..32>`  (default: `32`)
+- `--size-mb <1..64>`  (default: `64`)
 - `--count <1..100>`   (default: `50`)
 - `--ch <char>`        (optional; default is first letter of `--account`)
 - `--endpoint <URL>`   (default: `http://127.0.0.1:8546`)
@@ -79,7 +79,7 @@ Artifacts:
 ./target/release/da-spammer --account bob
 ```
 - Account: Bob
-- Blob size: 32 MiB (default)
+- Blob size: 64 MiB (default)
 - Transactions: 50 (default)
 - Blob content: repeated `b`
 - RPC endpoint: `http://127.0.0.1:8546`
@@ -100,7 +100,7 @@ Artifacts:
 - `--accounts <N>`              (default: `100`)
 - `--fund-each <AVAIL>`         (default: `10`; amount in AVAIL, multiplied internally by chain `ONE_AVAIL` constant)
 - `--batch-size <N>`            (default: `100`; number of transfers per `batchAll`)
-- `--size-mb <1..32>`           (default: `32`)
+- `--size-mb <1..64>`           (default: `64`)
 - `--loops <N>`                 (default: `1000`)
 - `--sleep-ms <milliseconds>`   (default: `0`; delay between submissions)
 - `--ch <char>`                 (optional; fixed blob character)
@@ -114,7 +114,7 @@ Artifacts:
 - Generates 100 accounts
 - Funds 10 AVAIL each (using chain's `ONE_AVAIL` base units)
 - Batches transfers in groups of 100
-- Submits 1000 blobs, 32 MiB each, round-robin over accounts
+- Submits 1000 blobs, 64 MiB each, round-robin over accounts
 
 **Custom run**
 ```bash
