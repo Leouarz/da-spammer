@@ -1,8 +1,11 @@
+use avail_rust_client::avail::data_availability::tx::SubmitData;
 use avail_rust_client::avail_rust_core::rpc::blob::submit_blob;
+use avail_rust_client::error::Error;
 use avail_rust_client::prelude::*;
+use avail_rust_client::subscription::{SubBuilder, TransactionSub};
 use clap::Parser;
 
-use da_spammer::build_blob_and_commitments;
+use da_spammer::{build_blob_and_commitments, build_commitments};
 
 /// Simple CLI for spamming blobs + metadata to an Avail node.
 #[derive(Parser, Debug)]
@@ -27,6 +30,13 @@ struct Args {
     /// RPC endpoint
     #[arg(long, default_value = "http://127.0.0.1:8546")]
     endpoint: String,
+
+    #[arg(long, default_value = "false")]
+    fetch_data_from_mainnet: bool,
+    #[arg(long, default_value_t = 1_800_000)]
+    fetch_data_from_mainnet_block_height: u32,
+    #[arg(long, default_value = "false")]
+    fetch_data_from_mainnet_concat: bool,
 }
 
 fn validate_account(s: &str) -> Result<String, String> {
@@ -52,7 +62,7 @@ fn keypair_for(account: &str) -> Keypair {
 }
 
 #[tokio::main]
-async fn main() -> Result<(), ClientError> {
+async fn main() -> Result<(), Error> {
     let args = Args::parse();
 
     if !(1..=64).contains(&args.size_mb) {
@@ -83,16 +93,67 @@ async fn main() -> Result<(), ClientError> {
     let byte = ch as u8;
 
     let account_id = signer.account_id();
-    let mut nonce = client.nonce(&account_id).await?;
+    let mut nonce = client.rpc().account_nonce(&account_id).await?;
     println!("AccountId: {account_id}");
     println!("Start nonce: {nonce}");
+
+    let use_real_data = args.fetch_data_from_mainnet;
+    let concat_real_data = args.fetch_data_from_mainnet_concat;
+    let mut sub = if use_real_data {
+        let block_height = args.fetch_data_from_mainnet_block_height;
+        // idk a random block height. Should have at least 1000 data submissions.
+        // Current best block height is 1_892_354
+        let m_client = Client::new(MAINNET_ENDPOINT).await?;
+        let sub = SubBuilder::default()
+            .block_height(block_height)
+            .build(&m_client)
+            .await?;
+        Some(TransactionSub::<SubmitData>::new(
+            m_client.clone(),
+            sub,
+            Default::default(),
+        ))
+    } else {
+        None
+    };
 
     // Precompute blobs & commitments
     println!("---- Precomputing {} blobs & commitments ...", args.count);
     let mut prepared: Vec<(Vec<u8>, H256, Vec<u8>)> = Vec::with_capacity(args.count);
     for i in 0..args.count {
-        let this_len = len_bytes - i;
-        let (blob, hash, commitments) = build_blob_and_commitments(byte, this_len);
+        let (blob, hash, commitments) = if use_real_data {
+            if concat_real_data {
+                let limit = args.size_mb * 1024 * 1024;
+                let mut stop = false;
+                let mut blob: Vec<u8> = Vec::with_capacity(limit);
+                loop {
+                    let txs = sub.as_mut().unwrap().next().await?;
+                    for tx in txs {
+                        let new_blob_len = tx.call.data.len();
+                        if (new_blob_len + blob.len()) < limit {
+                            blob.extend_from_slice(&tx.call.data);
+                        } else {
+                            stop = true;
+                            break;
+                        }
+                    }
+                    if stop {
+                        break;
+                    }
+                }
+                let (hash, commitments) = build_commitments(blob.clone());
+                (blob.clone(), hash, commitments)
+            } else {
+                let txs = sub.as_mut().unwrap().next().await?;
+                let blob = &txs[0].call.data;
+                let (hash, commitments) = build_commitments(blob.clone());
+                (blob.clone(), hash, commitments)
+            }
+        } else {
+            let this_len = len_bytes - i;
+            build_blob_and_commitments(byte, this_len)
+        };
+
         // use our prepared blob (same content) to keep prints identical to before
         println!(
             "  [{}] blob_len={}B  hash={:?}  commitments_len={}",
@@ -108,7 +169,7 @@ async fn main() -> Result<(), ClientError> {
     println!("---- Submitting {} blobs ...", prepared.len());
     for (i, (blob, hash, commitments)) in prepared.into_iter().enumerate() {
         let app_id = (i % 5) as u32;
-        let options = Options::new().app_id(app_id).nonce(nonce);
+        let options = Options::new(app_id).nonce(nonce);
 
         let unsigned = client.tx().data_availability().submit_blob_metadata(
             hash,
@@ -116,7 +177,7 @@ async fn main() -> Result<(), ClientError> {
             commitments,
         );
 
-        let tx_bytes = unsigned.sign(&signer, options).await.unwrap().0.encode();
+        let tx_bytes = unsigned.sign(&signer, options).await.unwrap().encode();
 
         println!(
             "  → [{}] nonce={} app_id={} tx_bytes={}B ...",
