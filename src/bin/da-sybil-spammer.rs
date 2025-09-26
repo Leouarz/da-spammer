@@ -1,7 +1,6 @@
-use avail_rust_client::avail_rust_core::rpc::blob::submit_blob;
-use avail_rust_client::prelude::*;
+use avail_rust::avail_rust_core::rpc::blob::submit_blob;
+use avail_rust::prelude::*;
 use clap::Parser;
-use sp_core::Pair;
 
 use da_spammer::build_blob_and_commitments;
 
@@ -108,12 +107,13 @@ async fn main() -> Result<(), ClientError> {
     println!("---- Generating {} accounts ...", args.accounts);
     let mut accts: Vec<(Keypair, String)> = Vec::with_capacity(args.accounts);
     for _ in 0..args.accounts {
-        let (pair, phrase, _seed) = sp_core::sr25519::Pair::generate_with_phrase(None);
+        /*         let (pair, phrase, _seed) = sp_core::sr25519::Pair::generate_with_phrase(None);
         // Prefer building from mnemonic (keeps SDK signing consistent)
         let kp = keypair_from_mnemonic(&phrase);
         // (sanity) ensure same public
         assert_eq!(kp.public_key().0, pair.public().0);
-        accts.push((kp, phrase));
+        accts.push((kp, phrase)); */
+        todo!();
     }
     println!("✓ Generated {} accounts", accts.len());
     println!("  Example #0 SS58: {}", accts[0].0.account_id());

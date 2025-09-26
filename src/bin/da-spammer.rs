@@ -1,5 +1,5 @@
-use avail_rust_client::avail_rust_core::rpc::blob::submit_blob;
-use avail_rust_client::prelude::*;
+use avail_rust::avail_rust_core::rpc::blob::submit_blob;
+use avail_rust::prelude::*;
 use clap::Parser;
 
 use da_spammer::build_blob_and_commitments;

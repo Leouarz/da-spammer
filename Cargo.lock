@@ -1427,14 +1427,12 @@ name = "da-spammer"
 version = "0.1.0"
 dependencies = [
  "avail-rust-client",
+ "base64",
  "clap",
  "da-commitment",
  "hex",
- "kate",
  "parity-scale-codec",
- "sp-core",
- "sp-runtime",
- "sp-std 14.0.0 (git+https://github.com/availproject/polkadot-sdk.git?branch=ghali%2Finfinity-da-rpc)",
+ "sp-crypto-hashing 0.1.0",
  "tokio",
 ]
 
