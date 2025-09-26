@@ -1,5 +1,4 @@
 use avail_rust_client::avail_rust_core::rpc::blob::submit_blob;
-use avail_rust_client::error::Error;
 use avail_rust_client::prelude::*;
 use clap::Parser;
 use sp_core::Pair;
@@ -82,7 +81,7 @@ fn dev_keypair(name: &str) -> Keypair {
 }
 
 #[tokio::main]
-async fn main() -> Result<(), Error> {
+async fn main() -> Result<(), ClientError> {
     let args = Args::parse();
     if !(1..=64).contains(&args.size_mb) {
         panic!("--size-mb must be within 1..=64");
@@ -121,7 +120,7 @@ async fn main() -> Result<(), Error> {
 
     // 2) Fund via utility.batchAll(transfers)
     let funder = dev_keypair(&args.funder);
-    let mut funder_nonce = client.rpc().account_nonce(&funder.account_id()).await?;
+    let mut funder_nonce = client.nonce(&funder.account_id()).await?;
     println!("---- Funding accounts with batchAll (nonce starts at {funder_nonce}) ...");
 
     // Build calls in chunks
@@ -138,7 +137,7 @@ async fn main() -> Result<(), Error> {
         }
         let batch = client.tx().utility().batch_all(calls);
         batch
-            .sign_and_submit(&funder, Options::default().nonce(funder_nonce))
+            .sign_and_submit(&funder, Options::new().nonce(funder_nonce))
             .await?;
         println!(
             "  → batch #{chunk_idx} with {} transfers, nonce={}",
@@ -160,7 +159,7 @@ async fn main() -> Result<(), Error> {
     println!("---- Fetching starting nonces for each account ...");
     let mut nonces: Vec<u32> = Vec::with_capacity(accts.len());
     for (kp, _) in accts.iter() {
-        let n = client.rpc().account_nonce(&kp.account_id()).await?;
+        let n = client.nonce(&kp.account_id()).await?;
         nonces.push(n);
     }
     println!("✓ Nonces fetched");
@@ -188,7 +187,7 @@ async fn main() -> Result<(), Error> {
 
         // app_id rotation as before
         let app_id = (i % 5) as u32;
-        let options = Options::new(app_id).nonce(nonce);
+        let options = Options::new().app_id(app_id).nonce(nonce);
 
         let unsigned = client.tx().data_availability().submit_blob_metadata(
             hash,
@@ -196,7 +195,7 @@ async fn main() -> Result<(), Error> {
             commitments,
         );
 
-        let tx_bytes = unsigned.sign(signer, options).await.unwrap().encode();
+        let tx_bytes = unsigned.sign(signer, options).await.unwrap().0.encode();
 
         println!(
             "  → [{}] acct#{} ({}) nonce={} app_id={} tx_bytes={}B ...",
